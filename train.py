@@ -6,7 +6,7 @@ from fbprophet import Prophet
 import model as fbmodel
 from sklearn.metrics import mean_squared_error
 
-api_key = "b0dc4cf9f6365bb21ad1bfdf2846fcde"
+api_key = ""
 
 def dataset(df, date_col, pred):
     df_new = df.rename(columns={datecol:'ds', pred:'y'})[['ds', 'y']]
@@ -23,7 +23,7 @@ def load_dataframe(path):
     df = pd.read_csv(path+ "/df.csv")
     return df
 
-def train_online(path):
+def train_online(path,api_key):
     model = fbmodel.load_model(path)
     df = load_dataframe(path)
     lasttime = list(df.iloc[df.shape[0]-1:, 0])[0]
@@ -33,7 +33,7 @@ def train_online(path):
     e = datetime.datetime.timestamp(now)
     e = int(e - (e%3600))
 
-    dfnew = get_data_from_api(1277333, tp, e)
+    dfnew = get_data_from_api(api_key, 1277333, tp, e)
     
     future = dfnew[['ds']]
     forecast = model.predict(future)[['ds', 'yhat']]
@@ -47,7 +47,7 @@ def train_online(path):
     dfsave = df.append(dfnew)
     #save_dataframe(dfsave, path)
     
-def get_data_from_api(id, start, end):
+def get_data_from_api(api_key, id, start, end):
     data = requests.get(f'http://history.openweathermap.org/data/2.5/history/city?id={id}&type=hour&start={start}&end={end}&appid={api_key}')
     dic = data.json()
     temp = {}
