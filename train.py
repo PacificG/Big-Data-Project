@@ -8,6 +8,10 @@ from sklearn.metrics import mean_squared_error
 
 api_key = ""
 
+def put_api_key(key):
+    global api_key
+    api_key = key
+
 def dataset(df, date_col, pred):
     df_new = df.rename(columns={datecol:'ds', pred:'y'})[['ds', 'y']]
     return df_new
@@ -26,25 +30,30 @@ def load_dataframe(path):
 def train_online(path,api_key):
     model = fbmodel.load_model(path)
     df = load_dataframe(path)
-    lasttime = list(df.iloc[df.shape[0]-1:, 0])[0]
-    tp = int(datetime.datetime.timestamp(pd.Timestamp(lasttime))) + 3600
+    tp, e = 0, 4* 25*3600
+    dfnew = pd.DataFrame()
+    while abs(tp - e) > 4*24*3600:
+        lasttime = list(df.iloc[df.shape[0]-1:, 0])[0]
+        tp = int(datetime.datetime.timestamp(pd.Timestamp(lasttime))) + 3600
 
-    now = datetime.datetime.now()
-    e = datetime.datetime.timestamp(now)
-    e = int(e - (e%3600))
-
-    dfnew = get_data_from_api(api_key, 1277333, tp, e)
-    
+        now = datetime.datetime.now()
+        e = datetime.datetime.timestamp(now)
+        e = int(e - (e%3600))
+        dfadd = get_data_from_api(api_key, 1277333, tp, e)
+        dfnew = dfnew.append(dfadd, ignore_index=True)
+        df = df.append(dfadd, ignore_index=True)
     future = dfnew[['ds']]
-    forecast = model.predict(future)[['ds', 'yhat']]
-    forecast['yactual'] = dfnew['y']
-    print(forecast)
+    forecast = model.predict(future)
+    model.plot(forecast)
+    forecastnew = forecast[['ds', 'yhat']]
+    forecastnew['yactual'] = dfnew['y']
+    print(forecastnew)
     
-    print(mean_squared_error(forecast['yactual'], forecast['yhat']))
+    print(mean_squared_error(dfnew['y'], forecastnew['yhat']))
     params = stan_init(model)
     newmodel = Prophet(yearly_seasonality=True, weekly_seasonality=True).fit(dfnew, init=params)
     #fbmodel.save_model(path)
-    dfsave = df.append(dfnew)
+    dfsave = df.append(dfnew, ignore_index=True)
     #save_dataframe(dfsave, path)
     
 def get_data_from_api(api_key, id, start, end):
